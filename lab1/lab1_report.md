@@ -138,7 +138,7 @@ QYsHcd/jPoRUWV2qb7A2Bb/JxeXLFUx39Qx+gr3VI2E=
 
 ```
 /interface/wireguard/peers
-add allowed-address=10.220.220.0/24 endpoint-address=37.230.113.18 endpoint-port=41168 interface=portal public-key="QYsHcd/jPoRUWV2qb7A2Bb/JxeXLFUx39Qx+gr3VI2E="
+add allowed-address=10.220.220.1/24 endpoint-address=37.230.113.18 endpoint-port=41168 interface=portal public-key="QYsHcd/jPoRUWV2qb7A2Bb/JxeXLFUx39Qx+gr3VI2E="
 ```
 
 ![Добавление пира на CHR](images/4-2.png)
