@@ -46,6 +46,8 @@ ansible --version
 
 # Схема
 
+![Схема](images/networkprog-1.drawio.png)
+
 # Ход работы 
 
 ## Выбор хостинга
