@@ -5,8 +5,8 @@ Year: 2025/2026<br />
 Group: K3323<br />
 Author: Krestyanova Elisaveta Fedorovna<br />
 Lab: Lab1<br />
-Date of create: 05.03.2025<br />
-Date of finished: ---<br />
+Date of create: 05.03.2026<br />
+Date of finished: 13.03.2026<br />
 
 # Задание
 
@@ -88,22 +88,141 @@ Yandex Cloud? Даётся стартовый грант но всего на 2 
 
 Окей.
 
-Скачивается vdi образ CHR с сайта [Mikrotik-а](https://mikrotik.com/download?architecture=x86) и используется в качестве диска в VirtualBox, виртуальная машина запускается и логинимся:
+Скачивается vdi образ CHR с сайта [Mikrotik-а](https://mikrotik.com/download?architecture=x86) и используется в качестве диска в VirtualBox. 
+
+Почему именно CHR? Потому что это Cloud Hosted Router, он предназначен для работы в виртуальной среде.
+
+В настройках сети виртуалки выставляем Bridged Adapter на нужный интерфейс ноутбука. Это позволит подключить роутер к сети.
+
+![Сетевые настройки](images/3-0.png)
+
+Виртуальная машина запускается и мы логинимся:
 
 ![Вход в CHR](images/3-1.png)
 
+Проверяем: роутер к сети подключён.
+
+![Получение роутером айпи-адреса](images/3-3.png)
+
+Где-то вдалеке вы слышите ругань студента, который отчаянно не мог пройти этот шаг... (см. [встреченные проблемы](#сеть-вуза))
+
 ## Wireguard
 
-На VPS изначально был установлен Wireguard. Он используется для других лабораторных работ, где VPS выступает также в качестве сервера. Поэтому можем спасти себе часы работы и скопировать существующий конфиг
+### Генерация ключей
 
+На VPS генерируем ключи командой:
+
+```
+wg genkey | tee privatekey | wg pubkey > publickey
+```
+
+На CHR ключи генерируются при создании интерфейса:
+
+```
+/interface/wireguard
+add listen-port=41168 name=portal
+```
+
+![Публичный и приватный ключ CHR](images/4-1.png)
+
+Публичный ключ CHR: 
+LBTsSbTFC9PAQxL56Om8UvuTDJ3vAz4anqmkUpJwn0k=
+
+Публичный ключ VPS:
+QYsHcd/jPoRUWV2qb7A2Bb/JxeXLFUx39Qx+gr3VI2E=
+
+
+### CHR
+
+Назначаем пира - наш VPS. 37.230.113.18 это его публичный айпи адрес.
+
+```
+/interface/wireguard/peers
+add allowed-address=10.220.220.0/24 endpoint-address=37.230.113.18 endpoint-port=41168 interface=portal public-key="QYsHcd/jPoRUWV2qb7A2Bb/JxeXLFUx39Qx+gr3VI2E="
+```
+
+![Добавление пира на CHR](images/4-2.png)
+
+Указываем, какой айпи-адрес у CHR в этом туннеле:
+
+```
+/ip/address
+add address=10.220.220.2/32 interface=portal
+/ip/route
+add dst-address=10.220.220.0/24 gateway=portal
+```
+
+![Выдача адреса](images/4-3.png)
+
+Брандмауэр CHR блочит по дефолту создание туннеля, так что надо это разрешить:
+
+```
+/ip/firewall/filter
+add action=accept chain=input dst-port=41168 protocol=udp src-address=37.230.113.18
+```
+
+![Фильтр Firewall](images/4-4.png)
+
+### VPS
+
+На VPS изначально был установлен Wireguard. Он используется для других лабораторных работ, где VPS выступает также в качестве сервера. Поэтому можем спасти себе часы работы и скопировать существующий конфиг :)
+
+```
+[Interface]
+Address = 10.220.220.1/24
+ListenPort = 41168
+PrivateKey = ###
+
+[Peer]
+# CHR
+PublicKey = LBTsSbTFC9PAQxL56Om8UvuTDJ3vAz4anqmkUpJwn0k=
+AllowedIPs = 10.220.220.2/32
+PersistentKeepalive = 25
+```
+
+Затем туннель поднимается через ```sudo wg-quick up <имя конфига>```. 
 
 
 # Результаты
 
+Вывод WG и результаты пинг-тестов:
+
+![Результаты](images/5-1.png)
+
+# Встреченные проблемы
+
+## Сеть вуза
+
+По пока не ясной мне причине, в вузе роутер не получал никоим образом айпи-адрес, даже при правильных настройках виртуалки. Вероятно, в вузе стоят ограничения, что странным неизвестным роутерам айпи-адреса не выдавать. Как только я принесла свой ноутбук домой, всё заработало.
+
+## Неверно скопированные ключи
+
+С CHR пингуется публичный айпи адрес сервера? Пингуется!
+
+А туннелевский адрес пингуется? Не пингуется...
+
+Что tcpdump говорит на VPS-е? Что запрос до VPS доходит... VPS отвечает? Нет...
+
+И что в итоге? Оказалось, на стороне VPS в публичном ключе CHR я перепутала 0 и O. А-а-а-а-а-а-а-а!!!
+
+Почему? Потому что я ручками вводила все ключи :) Мне было очень лень разбираться как буфер обмена в VirtualBox настроить.
+
+Я решила это через установку Winbox, чтобы можно было удобно ctrl c + ctrl v все ключи.
+
+![Winbox](images/4-5.png)
+
+Верный публичный ключ вставила и всё заработало сразу же. О чудо.
+
 # Заключение
+
+В ходе работы был установлен Ansible и Python3 на VPS. В VirtualBox был импортирован CHR. CHR и VPS были связаны между собой wireguard туннелем.
+
+Цель работы была выполнена.
 
 # Дополнительные источники
 
 1. Установка CHR на VirtualBox: https://help.mikrotik.com/docs/spaces/ROS/pages/262864931/CHR+installing+on+VirtualBox
 
 2. Доступ к CHR  https://forum.mikrotik.com/t/network-setting-in-virtual-box-to-connect-them-together/47714/3 
+
+3. Wireguard на Mikrotik: https://help.mikrotik.com/docs/spaces/ROS/pages/69664792/WireGuard
