@@ -1,0 +1,27 @@
+- name: lab2_setup
+  hosts: routers
+  gather_facts: false
+
+  tasks:
+    - name: User setup
+      community.routeros.command:
+        commands:
+          - /user add name=plida password=letmein group=full
+    
+    - name: NTP client
+      community.routeros.command:
+        commands:
+          - /system ntp client set enabled=yes servers=0.ru.pool.ntp.org
+
+    - name: Show loopback address
+      debug: 
+        var: loopback_ip
+
+    - name: OSPF
+      community.routeros.command:
+        commands:
+          - /interface bridge add name=loopback
+          - /ip address add address={{ loopback_ip + '/32' }} interface=loopback network={{ loopback_ip }}
+          - /routing ospf instance add name=inst router-id={{ loopback_ip }}
+          - /routing ospf area add name=backbonev2 area-id=0.0.0.0 instance=inst
+          - /routing ospf interface-template add area=backbonev2 interfaces=ether1 type=ptp

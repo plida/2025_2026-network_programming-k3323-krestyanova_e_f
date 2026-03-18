@@ -16,17 +16,18 @@ Date of finished: ---<br />
 
 Ход работы:
 
-- Установить второй CHR на своем ПК.
-- Организовать второй OVPN Client на втором CHR.
-- Используя Ansible, настроить сразу на 2-х CHR:
-    логин/пароль;
-
-    NTP Client;
-
-    OSPF с указанием Router ID; 4. Собрать данные по OSPF топологии и полный конфиг устройства.
+1. Установить второй CHR на своем ПК.
+2. Организовать второй OVPN Client на втором CHR.
+3. Используя Ansible, настроить сразу на 2-х CHR:
+  - логин/пароль;
+  - NTP Client;
+  - OSPF с указанием Router ID;
+4. Собрать данные по OSPF топологии и полный конфиг устройства.
 
 
 # Схема
+
+![Схема](images/networkprog-1_drawio_1.png)
 
 # Ход работы 
 
@@ -43,9 +44,6 @@ Date of finished: ---<br />
 Создаём снова интерфейс, чтобы пересоздать ключи:
 
 ![Пересоздание ключей](images/1-3.png)
-
-Публичный ключ CHR2:
-nep4zIqCurxKpQLPhwhycdFvMTnf/mOqAJWw3MgJEVw=
 
 Привязываем снова айпи адрес к интерфейсу туннеля:
 
@@ -96,15 +94,25 @@ ansible_network_os=community.routeros.routeros
 
 ![Проверка подключения Ansible](images/2-7.png)
 
+## Плэйбуки
 
-### Смена юзера
-
-```pip install ansible-pylibssh```
+Создаём плейбук. В нём указывается имя и используемые хосты. Можно отключить gather_fact, который собирает информацию о хостах для использования в плейбуках. Это нам не надо в данном задании, а работу чуть оптимизирует.
 
 ```
 - name: lab2_setup
   hosts: routers
   gather_facts: false
+```
+
+### Смена юзера
+
+Для работы плейбуков ansible просит библиотеку ansible-pylibssh.
+
+```pip install ansible-pylibssh```
+
+Создаём первую таску. В ней нужно указать, что команда даётся routeros.
+
+```
   tasks:
     - name: user setup
       community.routeros.command:
@@ -113,35 +121,96 @@ ansible_network_os=community.routeros.routeros
 ```
 ![Запуск смены юзера](images/3-1.png)
 
-![Добавленный юзер](images/3-2.png)
 
 ### NTP клиент
 
+Новая таска. Берём русский NTP сервер.
+
 ```
-  tasks:
-    - name: NTP client
-      community.routeros.command:
-        commands:
-          - /system ntp client set enabled=yes
+  - name: NTP client
+    community.routeros.command:
+      commands:
+        - /system ntp client set enabled=yes servers=0.ru.pool.ntp.org
 ```
 
 ![Запуск NTP клиентов](images/4-1.png)
 
-![Проверка NTP клиентов](images/4-2.png)
 
 ### OSPF
 
-Невозможно использовать глобальные переменные для 
+Задача: настроить разные loopback адреса для разных хостов.
 
-```ansible-playbook playbooks/lab2-setup.yml --step --start-at-task='Create loopback address' -i hosts``` 
+Проблема: очень не хочется ручками в конфиге yaml их вводить.
 
-![alt text](images/5-1.png)
+Решение: использовать какую-то глобальную переменную, хранящую айпи адреса, и повышающая её на единицу переходя к очередному хосту.
+
+Проблема: Ansible так не работает.
+
+Решение: вставить адреса loopback в тот же файл hosts рядом.  
+
+```
+[routers]
+CHR1 ansible_host=10.220.220.2 loopback_ip=10.255.255.221
+CHR2 ansible_host=10.220.220.3 loopback_ip=10.255.255.222
+```
+
+Так они хотя бы на видном месте, и не вплетены страшным образом в логику.
+
+Перед тем как прописывать команды, можно сделать тестовый дебаг для проверки, что действительно из hosts верный адрес забирается:
+
+```
+- name: Show loopback address
+  debug: 
+    var: loopback_ip
+```
+
+и вызвать этот таск: 
+
+```ansible-playbook playbooks/lab2-setup.yml --step --start-at-task='Show loopback address' -i hosts``` 
+
+(команда начинает с этого таска, от дальнейших можно просто отказаться).
 
 ![alt text](images/5-2.png)
 
-```pip install netaddr```
+Создаём таск:
+
+```
+- name: OSPF
+      community.routeros.command:
+        commands:
+          - /interface bridge add name=loopback
+          - /ip address add address={{ loopback_ip + '/32' }} interface=loopback network={{ loopback_ip }}
+          - /routing ospf instance add name=inst router-id={{ loopback_ip }}
+          - /routing ospf area add name=backbonev2 area-id=0.0.0.0 instance=inst
+          - /routing ospf interface-template add area=backbonev2 interfaces=ether1 type=ptp
+```
+
+### Вывод информации о роутерах
+
+Отдельным плейбуком указываем таски по сбору информации о роутерах: routeros.facts, /export, /routing ospf neighbor и /routing ospf interface. 
+
+Эта информация выводится в переменные (через register), которые затем записываются в файлы (через copy). 
+
+![Запуск экспорта](images/8-1.png)
 
 # Результаты
+
+## Смена юзера
+
+![Добавленный юзер](images/3-2.png)
+
+## NTP
+
+![Проверка NTP клиентов](images/4-2.png)
+
+## OSPF
+
+![Проверка OSPF](images/7-1.png)
+
+## Вывод информации
+
+![Проверка вывода](images/8-2.png)
+
 
 # Встреченные проблемы
 
@@ -191,12 +260,27 @@ ansible_network_os=community.routeros.routeros
 
 После этого пинг работает.
 
+## ether2 на 2-м роутере
+
+Копировала я роутер... с верой. Я скопировала машину полностью и ручками правила в ней всё, айпи, вайргард, прочие радости. 
+
+По дороге у меня каким-то образом адрес домашний прицепился к ether2, а не к ether1, как было в предыдущем роутере. 
+
+В секции ospf это оказалось проблемой. Всё настроила, всё вроде правильно, а соседи не появляются, как так? Смотришь: а там темплейт интерфейса не создался у этого роутера, т.к. я указала интерфейс ether1.
+
+
 # Заключение
+
+В ходе работы был склонирован роутер. На нём был настроен wireguard клиент. Затем с помощью Ansible на этих роутерах были настроены новые юзеры, NTP клиент, OSPF; а также были выведены полная информация об этих устройствах в отдельные файлы.
+
+Цель работы была выполнена.
 
 # Дополнительные источники
 
-1. https://docs.ansible.com/projects/ansible/latest/collections/community/routeros/docsite/ssh-guide.html#ansible-collections-community-routeros-docsite-ssh-guide
+1. Ansible с RouterOS: https://docs.ansible.com/projects/ansible/latest/collections/community/routeros/docsite/ssh-guide.html#ansible-collections-community-routeros-docsite-ssh-guide
 
 2. "Failed to create temporary directory": https://forummikrotik.ru/viewtopic.php?t=13359
 
-3. https://yandex.cloud/ru/docs/tutorials/infrastructure-management/ntp?utm_referrer=https%3A%2F%2Fwww.google.com%2F
+3. Русские NTP сервера: https://yandex.cloud/ru/docs/tutorials/infrastructure-management/ntp?utm_referrer=https%3A%2F%2Fwww.google.com%2F
+
+4. Настройка NTP клиента: https://настройка-микротик.рф/ntp-client-mikrotik/

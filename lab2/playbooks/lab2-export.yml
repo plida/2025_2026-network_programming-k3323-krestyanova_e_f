@@ -1,0 +1,42 @@
+- name: lab2_export
+  hosts: routers
+  gather_facts: false
+
+  tasks:
+    - name: Get all CHR_facts
+      community.routeros.facts:
+        gather_subset: all
+      register: chr_facts
+
+    - name: Get /export
+      community.routeros.command:
+        commands:
+          - /export
+      register: chr_export
+
+    - name: Get OSPF_neighbors
+      community.routeros.command:
+        commands:
+          - /routing ospf neighbor print detail
+      register: ospf_neighbors
+
+    - name: Get OSPF_interfaces
+      community.routeros.command:
+        commands:
+          - /routing ospf interface print detail
+      register: ospf_interfaces
+        
+    - name: Print facts to file 
+      copy:
+        content: "{{ chr_facts }}"
+        dest: ./export/lab2/{{ inventory_hostname }}_facts.json
+    
+    - name: Print export to file 
+      copy:
+        content: "{{ chr_export }}"
+        dest: ./export/lab2/{{ inventory_hostname }}_export.json
+            
+    - name: Print OSPF topology to file
+      copy:
+        content: "{{ ospf_neighbors.stdout }}, {{ ospf_interfaces.stdout }}"
+        dest: ./export/lab2/{{ inventory_hostname }}_ospf.txt

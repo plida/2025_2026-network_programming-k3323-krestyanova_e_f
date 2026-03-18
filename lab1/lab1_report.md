@@ -127,12 +127,6 @@ add listen-port=41168 name=portal
 
 ![Публичный и приватный ключ CHR](images/4-1.png)
 
-Публичный ключ CHR: 
-LBTsSbTFC9PAQxL56Om8UvuTDJ3vAz4anqmkUpJwn0k=
-
-Публичный ключ VPS:
-QYsHcd/jPoRUWV2qb7A2Bb/JxeXLFUx39Qx+gr3VI2E=
-
 
 ### CHR
 
