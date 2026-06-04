@@ -1,0 +1,21 @@
+---
+plugin: netbox.netbox.nb_inventory
+
+validate_certs: False
+config_context: False
+
+api_endpoint: "http://10.220.220.4:8000/"
+token: "nbt_u3qKz603WIxg.qUU4yOTNNACd4Q4Gxk2YbluZJMgMvO3hjJGTS5cG"
+
+group_by:
+  - sites
+  - device_roles
+
+fetch_all: true
+interfaces: true 
+
+compose:
+  ansible_host: primary_ip.address | regex_replace('/[0-9]+$', '')
+
+
+  

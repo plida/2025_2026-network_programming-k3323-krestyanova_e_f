@@ -27,6 +27,68 @@ Date of finished: ---<br />
 
 # Ход работы 
 
+В VirtualBox создаём новую виртуальную машину: Ubuntu Live server 26.04.
+
+Netbox будем устанавливать через Docker. На виртуальной машине устанавливаем Docker 
+
+docker compose exec netbox /opt/netbox/netbox/manage.py createsuperuser
+
+Пришлось выключить включить контейнер, выключить включить докер и тогда я только смогла зайти 
+
+![alt text](images/image.png)
+
+![site](images/image-1.png)
+
+![alt text](images/image-2.png)
+
+![alt text](images/image-3.png)
+
+Device role: ![alt text](images/image-4.png)
+
+Device type: ![alt text](images/image-5.png)
+
+![alt text](images/image-6.png)
+
+![alt text](images/image-7.png)
+
+![alt text](images/image-8.png)
+
+installed wireguard on ubuntu vm 
+
+connected tunnel
+
+![alt text](images/image-9.png)
+
+![alt text](images/image-10.png)
+
+![alt text](images/image-11.png)
+
+![alt text](images/image-12.png)
+
+![alt text](images/image-13.png)
+
+![alt text](images/image-14.png)
+
+![alt text](images/image-15.png)
+
+for json_query installed jmsepath 
+
+Использование динамического инвентаря
+
+![alt text](images/image-17.png)
+
+![alt text](images/image-16.png)
+
+![alt text](images/image-18.png)
+
+![alt text](images/image-19.png)
+
+Удалила адрес loopback, он успешно добавился
+
+![alt text](images/image-20.png)
+
+![alt text](images/image-21.png)
+
 # Результаты
 
 # Заключение

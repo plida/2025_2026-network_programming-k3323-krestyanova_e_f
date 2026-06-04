@@ -1,0 +1,38 @@
+- name: lab3_export
+  hosts: device_roles_router
+  gather_facts: false
+
+  vars:
+    netbox_api: "{{ lookup('env', 'NETBOX_API') }}"
+    netbox_token: "{{ lookup('env', 'NETBOX_TOKEN') }}"
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_network_os: community.routeros.routeros  
+    ansible_user: admin
+    ansible_password: letmein
+
+  tasks:
+    - name: 1. Get license info
+      community.routeros.command:
+        commands:
+          - /system license print
+      register: system_license
+
+    - name: 2. Extract system-id
+      set_fact:
+        system_id: "{{ system_license.stdout_lines.0.0 | regex_replace('.*system-id: ', '') }}"
+
+    - name: 3. Show system-id
+      debug:
+        msg: "Serial for {{ inventory_hostname }} = {{ system_id }}"
+
+    - name: 4. Submit to NetBox 
+      uri:
+        url: "{{ netbox_api }}/api/dcim/devices/{{ interfaces[0].device.id }}/"
+        method: PATCH
+        headers:
+          Authorization: "Token {{netbox_token}}"
+        body_format: json
+        body:
+          serial: "{{ system_id }}"
+      delegate_to: localhost
+      register: update

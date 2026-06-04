@@ -1,0 +1,26 @@
+- name: lab3_setup
+  hosts: device_roles_router
+  gather_facts: false
+
+  vars:
+    netbox_api: "{{ lookup('env', 'NETBOX_API') }}"
+    netbox_token: "{{ lookup('env', 'NETBOX_TOKEN') }}"
+    ansible_connection: ansible.netcommon.network_cli
+    ansible_network_os: community.routeros.routeros  
+    ansible_user: admin
+    ansible_password: letmein
+
+  tasks:
+    - name: 1. Name setup
+      community.routeros.command:
+        commands:
+          - /system identity set name="{{ inventory_hostname }}"
+    
+    - name: 2. Add IP
+      community.routeros.command:
+        commands:
+          - /ip address add address="{{ item.1.address }}" interface="{{ item.0.name }}"
+      loop: "{{ interfaces | subelements('ip_addresses') }}"
+
+
+          

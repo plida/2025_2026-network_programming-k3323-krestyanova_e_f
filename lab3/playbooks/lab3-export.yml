@@ -1,0 +1,58 @@
+---
+- name: lab3_export
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    netbox_api: "{{ lookup('env', 'NETBOX_API') }}"
+    netbox_token: "{{ lookup('env', 'NETBOX_TOKEN') }}"
+    output_dir: "/home/plida/netprog-ansible/export/lab3"
+    output_file: "netbox_export.json"
+
+  tasks:
+    - name: 1-1. Get sites
+      set_fact:
+        sites: "{{ query('netbox.netbox.nb_lookup', 'sites', api_endpoint=netbox_api, token=netbox_token) }}"
+
+    - name: 1-2. Print sites
+      debug:
+        msg: "{{ sites | json_query('[*].value.name') }}"
+
+    - name: 2-1. Get devices
+      set_fact:
+        devices: "{{ query('netbox.netbox.nb_lookup', 'devices', api_filter='site=lab3', api_endpoint=netbox_api, token=netbox_token) }}"
+
+    - name: 2-2. Print devices
+      debug:
+        msg: "{{ devices | json_query('[*].value.name') }}"
+
+    - name: 3-1. Get interfaces
+      set_fact:
+        interfaces: "{{ query('netbox.netbox.nb_lookup', 'interfaces', api_filter='site=lab3', api_endpoint=netbox_api, token=netbox_token) }}"
+
+    - name: 3-2. Print interfaces
+      debug:
+        msg: "{{ interfaces | json_query('[*].join(`: `, [value.device.name, value.name])') }}"
+
+    - name: 4-1. Get ip-addresses
+      set_fact:
+        ip_addresses: "{{ query('netbox.netbox.nb_lookup', 'ip-addresses', api_filter='site=lab3', api_endpoint=netbox_api, token=netbox_token) }}"
+
+    - name: 4-2. Print ip-addresses
+      debug:
+        msg: "{{ ip_addresses | json_query('[*].join(`: `, [value.assigned_object.device.name, value.assigned_object.name, value.address])') }}"
+
+    - name: 5. Build JSON
+      set_fact:
+        netbox_data:
+          export_metadata:
+            timestamp: "{{ now(utc=True).strftime('%Y-%m-%dT%H:%M:%S') }}"
+          devices: "{{ devices | map(attribute='value') | list }}"
+          interfaces: "{{ interfaces | map(attribute='value') | list }}"
+          ip_addresses: "{{ ip_addresses | map(attribute='value') | list }}"
+    
+    - name: 6. Save JSON to file
+      ansible.builtin.copy:
+        content: "{{ netbox_data | to_nice_json(indent=2) }}"
+        dest: "{{ output_dir }}/{{ output_file }}"
+        mode: '0644'
