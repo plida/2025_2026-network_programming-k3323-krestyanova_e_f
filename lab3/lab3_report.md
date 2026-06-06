@@ -25,6 +25,8 @@ Date of finished: ---<br />
 
 # Схема
 
+![alt text](images/схема.png)
+
 # Ход работы 
 
 ## Поднятие Netbox
@@ -91,7 +93,6 @@ Device type: ![alt text](images/image-5.png)
 
 ![alt text](images/image23.png)
 ![alt text](image.png)
-На рез
 
 ## Конфигурация CHR
 
